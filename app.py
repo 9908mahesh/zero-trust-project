@@ -1,11 +1,20 @@
 from flask import Flask, request, jsonify, render_template
 from joblib import load
 import pandas as pd
+import os
 
-app = Flask(__name__)
+# The model file should be in the same directory as this script.
+MODEL_PATH = 'zero_trust_model.joblib'
 
 # Load the trained model when the app starts
-model = load('zero_trust_model.joblib')
+try:
+    model = load(MODEL_PATH)
+except FileNotFoundError:
+    # This will help with debugging in case the file is not found
+    print(f"Error: Model file '{MODEL_PATH}' not found. Ensure it's in the same directory.")
+    model = None
+
+app = Flask(__name__)
 
 @app.route('/')
 def home():
@@ -20,6 +29,9 @@ def authenticate():
     Receives user data from the front end and uses the trained
     model to predict if the activity is legitimate.
     """
+    if model is None:
+        return jsonify({"status": "Error", "message": "Model not loaded. Please contact the administrator."})
+
     try:
         data = request.json
         
@@ -37,7 +49,3 @@ def authenticate():
     except Exception as e:
         # Handle potential errors gracefully
         return jsonify({"status": "Error", "message": f"An error occurred: {str(e)}"})
-
-if __name__ == '__main__':
-    # Run the Flask app in debug mode. Remove debug=True for production.
-    app.run(debug=True)
