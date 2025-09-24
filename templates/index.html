@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zero Trust Access Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+        <h1 class="text-3xl font-bold text-gray-800 text-center mb-6">AI-Powered Zero Trust Demo</h1>
+        
+        <p class="text-gray-600 text-center mb-8">
+            This demo simulates an AI-driven security system that analyzes user behavior (typing speed, mouse movement, etc.) to grant or deny access.
+        </p>
+
+        <!-- Form for "legitimate" user -->
+        <form id="legitimate-form" class="space-y-4">
+            <h2 class="text-xl font-semibold text-gray-700">Simulate Legitimate User</h2>
+            <p class="text-sm text-gray-500">Clicking this button simulates a user with normal behavior.</p>
+            <button type="submit" class="w-full bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75">
+                Login as Legitimate User
+            </button>
+        </form>
+
+        <div class="my-6 border-t border-gray-300"></div>
+
+        <!-- Form for "suspicious" user -->
+        <form id="suspicious-form" class="space-y-4">
+            <h2 class="text-xl font-semibold text-gray-700">Simulate Suspicious Activity</h2>
+            <p class="text-sm text-gray-500">This simulates a user with erratic, "non-human" behavior.</p>
+            <button type="submit" class="w-full bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition-colors focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-75">
+                Login as Suspicious User
+            </button>
+        </form>
+
+        <div class="my-6 border-t border-gray-300"></div>
+
+        <!-- Result area -->
+        <div id="result-container" class="mt-6 p-4 border rounded-lg">
+            <h3 class="text-lg font-bold">Prediction Result:</h3>
+            <p id="result-message" class="mt-2 text-gray-700 font-medium italic">Click a button to test the system.</p>
+        </div>
+    </div>
+
+    <script>
+        // Function to send data to the Flask server
+        async function sendData(userData) {
+            const resultMessage = document.getElementById('result-message');
+            resultMessage.textContent = "Analyzing behavior...";
+            resultMessage.classList.remove('text-green-600', 'text-red-600');
+
+            try {
+                const response = await fetch('/authenticate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(userData)
+                });
+
+                const result = await response.json();
+                resultMessage.textContent = result.message;
+
+                if (result.status === "Success") {
+                    resultMessage.classList.add('text-green-600');
+                } else if (result.status === "Suspicious") {
+                    resultMessage.classList.add('text-red-600');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                resultMessage.textContent = "Connection error. Please check the server.";
+                resultMessage.classList.add('text-red-600');
+            }
+        }
+
+        // Event listener for legitimate user form
+        document.getElementById('legitimate-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            // Simulate normal user data
+            const userData = {
+                typing_speed: Math.random() * (70 - 40) + 40, 
+                mouse_movement: Math.random() * (0.6 - 0.2) + 0.2,
+                login_time_diff: Math.random() * (4 - 1) + 1,
+                location_change: 0
+            };
+            sendData(userData);
+        });
+
+        // Event listener for suspicious user form
+        document.getElementById('suspicious-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            // Simulate suspicious/erratic user data
+            const userData = {
+                typing_speed: Math.random() * (20 - 5) + 5, // Slower, more erratic typing
+                mouse_movement: Math.random() * (1.2 - 0.8) + 0.8, // Faster, more erratic mouse movement
+                login_time_diff: Math.random() * (10 - 6) + 6,
+                location_change: 1 // Simulated location change
+            };
+            sendData(userData);
+        });
+    </script>
+</body>
+</html>
