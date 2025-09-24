@@ -1,51 +1,71 @@
-from flask import Flask, request, jsonify, render_template
-from joblib import load
-import pandas as pd
 import os
-
-# The model file should be in the same directory as this script.
-MODEL_PATH = 'zero_trust_model.joblib'
-
-# Load the trained model when the app starts
-try:
-    model = load(MODEL_PATH)
-except FileNotFoundError:
-    # This will help with debugging in case the file is not found
-    print(f"Error: Model file '{MODEL_PATH}' not found. Ensure it's in the same directory.")
-    model = None
+from flask import Flask, request, jsonify, render_template
+import numpy as np
+import joblib
 
 app = Flask(__name__)
 
+# Correctly load the model using an absolute path relative to the app's directory
+MODEL_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'zero_trust_model.joblib')
+
+try:
+    model = joblib.load(MODEL_FILE_PATH)
+    model_loaded = True
+except Exception as e:
+    model_loaded = False
+    print(f"Error loading the model: {e}")
+
 @app.route('/')
 def home():
-    """
-    Renders the main web page for the demo.
-    """
-    return render_template('index.html')
+    return render_template('index.html', model_loaded=model_loaded)
 
-@app.route('/authenticate', methods=['POST'])
-def authenticate():
-    """
-    Receives user data from the front end and uses the trained
-    model to predict if the activity is legitimate.
-    """
-    if model is None:
-        return jsonify({"status": "Error", "message": "Model not loaded. Please contact the administrator."})
+@app.route('/predict', methods=['POST'])
+def predict():
+    if not model_loaded:
+        return jsonify({'prediction': 'Model not loaded. Please contact the administrator.'})
 
     try:
         data = request.json
+        user_id = data.get('userId')
+        session_id = data.get('sessionId')
+        ip_address = data.get('ipAddress')
+        typing_speed = data.get('typingSpeed')
+        mouse_movement = data.get('mouseMovement')
+        login_time = data.get('loginTime')
+
+        # Convert ip_address to a numerical feature (e.g., using a hash)
+        # For simplicity in this example, we'll use a placeholder.
+        ip_address_feature = hash(ip_address) % 1000  # Simple hash to integer
+
+        # Prepare the features for the model
+        features = [
+            typing_speed,
+            mouse_movement,
+            login_time,
+            ip_address_feature
+        ]
         
-        # Prepare the data for prediction in a pandas DataFrame
-        new_user_data = pd.DataFrame([data])
-        
-        # Predict the trust score (1 for legitimate, 0 for suspicious)
-        prediction = model.predict(new_user_data)
-        
-        if prediction[0] == 1:
-            return jsonify({"status": "Success", "message": "Access Granted: User is legitimate."})
-        else:
-            return jsonify({"status": "Suspicious", "message": "Access Denied: Suspicious activity detected."})
-            
+        # Reshape the data for prediction. The model expects a 2D array.
+        features_np = np.array(features).reshape(1, -1)
+
+        # Make a prediction
+        prediction_proba = model.predict_proba(features_np)[0]
+        prediction_class = model.predict(features_np)[0]
+
+        # The model returns a probability of belonging to each class.
+        # We assume 0 is "legitimate" and 1 is "suspicious".
+        result = "Legitimate" if prediction_class == 0 else "Suspicious"
+
+        response = {
+            'prediction': result,
+            'probability_legitimate': float(prediction_proba[0]),
+            'probability_suspicious': float(prediction_proba[1])
+        }
+
+        return jsonify(response)
+
     except Exception as e:
-        # Handle potential errors gracefully
-        return jsonify({"status": "Error", "message": f"An error occurred: {str(e)}"})
+        return jsonify({'error': str(e)})
+
+if __name__ == '__main__':
+    app.run(debug=True)
