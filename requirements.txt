@@ -1,5 +1,6 @@
-#python dependencies
 Flask
 scikit-learn
 pandas
 joblib
+numpy
+gunicorn
