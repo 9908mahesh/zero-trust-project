@@ -1,183 +1,154 @@
-🛡️ AI-Powered Zero Trust Access Control (Behavioral Anomaly Detection)
-Project Overview
-This is a full-stack web application prototype demonstrating a Zero Trust security model powered by Machine Learning. Instead of relying solely on static credentials, this system continuously verifies user identity by analyzing real-time behavioral features (such as geolocation deviation, login time anomaly, and device consistency).
+🛡️ AI-Powered Zero Trust Access Control
+Next-Generation Behavioral Anomaly Detection
+🔗 Live Application & Code
+Component
 
-The core function is Anomaly Detection. The system determines if a login attempt is LEGITIMATE or SUSPICIOUS in real-time, proactively mitigating risks from compromised accounts and insider threats.
+Link
 
-Key Features
-Real-time Prediction: Uses a trained Isolation Forest model to classify access requests instantly.
+Live App
 
-Scenario Testing: Allows users to input both "Legitimate" and "Suspicious" data points to see the model's decision.
+https://9908maahi.pythonanywhere.com/
 
-Zero Trust Decision: Access is dynamically granted or denied/challenged based on the behavioral risk score.
+Code Repository
 
-💻 Technology Stack
+https://github.com/9908mahesh/zero-trust-project.git
+
+💡 Overview
+This project is a full-stack prototype demonstrating a Zero Trust security model powered by a custom-trained Machine Learning model. The system continuously verifies every access request by analyzing behavioral features, moving past static passwords to provide real-time risk assessment and dynamic access decisions.
+
+Goal: Proactively mitigate threats from compromised accounts and insider activity by challenging or denying access to suspicious users.
+
+Core Features
+Dynamic Challenge: Suspicious access attempts are met with a requirement for 2-Factor Authentication + CAPTCHA, enforcing the "Never Trust, Always Verify" principle.
+
+Real-time Prediction: Uses an Isolation Forest model (an Unsupervised ML algorithm) to classify attempts as LEGITIMATE or SUSPICIOUS instantly.
+
+Interactive Scenarios: Allows users to easily switch between low-risk and randomized high-risk input profiles for direct testing.
+
+💻 Technical Stack
 Component
 
 Technology
 
 Role
 
-Backend Framework
+Backend/API
 
 Python / Flask
 
-Routes, API endpoint (/predict), Model serving.
+Routes, API endpoint (/predict), and model serving.
 
 Machine Learning
 
 Scikit-learn (Isolation Forest)
 
-Anomaly detection model for classifying behaviors.
+The core anomaly detection algorithm.
 
-Data Handling
+Data/Model
 
-Pandas / NumPy / Joblib
+Pandas / Joblib
 
 Data preprocessing, synthetic data generation, and model persistence.
 
-Frontend
+Frontend/UI
 
 HTML, JavaScript, Tailwind CSS
 
-Interactive UI for feature input, visualization, and API communication.
+Interactive interface for input, status, and result visualization.
 
 Deployment
 
 PythonAnywhere
 
-Hosting the Flask web application and serving the model.
+Hosting environment for the full-stack application.
 
-🚀 Setup and Deployment
-Prerequisites
-A Python 3 environment.
+📸 Application Screenshots
+These screenshots demonstrate the two distinct states of the AI-powered Zero Trust system in action:
 
-A PythonAnywhere account (for deployment).
+ACCESS GRANTED (Legitimate)
 
-1. File Structure
-Ensure your project directory has the following structure:
-
-zero-trust-project/
-├── app.py                      # Flask server application
-├── train_model.py              # Script to train and save the ML model
-├── requirements.txt            # Python dependencies
-├── isolation_forest_model.joblib # **Trained model file (must be present)**
-└── templates/
-    └── index.html              # Frontend user interface
-
-
-2. Model Training (Local or PythonAnywhere Console)
-You must run the training script first to create the necessary model file (isolation_forest_model.joblib).
-
-# Install dependencies first (or let PythonAnywhere handle this)
-pip install -r requirements.txt
-
-# Run the training script
-python train_model.py
-
-
-This script generates the synthetic dataset, trains the Isolation Forest model, and saves it as isolation_forest_model.joblib.
-
-3. Deployment on PythonAnywhere
-Upload Files: Upload all files (.py, .txt, .joblib) and the templates/ folder to your PythonAnywhere project directory.
-
-Virtual Environment: Set up a virtual environment and install dependencies:
-
-pip install -r requirements.txt
-
-
-Web App Setup:
-
-Navigate to the Web tab in PythonAnywhere.
-
-Create a new web app using the Flask framework.
-
-Configure the WSGI file to point to your app.py logic.
-
-The Flask application (app.py) will automatically load the saved isolation_forest_model.joblib file when it starts, making the /predict endpoint available to the frontend.
-
-🌐 Live Demo and Screenshots
-The application is hosted on PythonAnywhere and available to test in real-time.
-
-Live Application Link: https://9908maahi.pythonanywhere.com/
-
-Below are screenshots demonstrating the two main states of the Zero Trust system:
-
-State
-
-Decision
-
-Screenshot
-
-Legitimate User
-
-ACCESS GRANTED
+ACCESS DENIED (Suspicious)
 
 
 
-Suspicious User
-
-ACCESS DENIED - ANOMALY DETECTED
 
 
+🧪 Usage Guide
+The application accepts four primary features to generate a prediction. You can control these features using the interface buttons and editable inputs.
 
-💡 How to Use the Application
-The application allows you to simulate user behavior by adjusting the key input features.
+Input Features & Impact
+Feature Name
 
-Scenario Buttons:
+Description
 
-Set Legitimate Defaults: Populates the inputs with low-risk values (e.g., small geolocation deviation, high historical risk score), resulting in an ACCESS GRANTED prediction.
+Example of Legitimate Input
 
-Randomize Suspicious Inputs: Populates the inputs with high-risk, randomized values (e.g., massive geolocation deviation, low historical risk score), resulting in an ACCESS DENIED - ANOMALY DETECTED prediction.
+Example of Suspicious Input
 
-Editable Inputs: You can manually adjust the values for Geolocation Deviation (km) and Historical Risk Score (0.0 - 1.0) to test nuanced scenarios.
+Geolocation Deviation (km)
 
-Run AI Prediction: Click this button to send the current feature set to the Flask backend, where the Isolation Forest model returns an access decision and a confidence score.
+Distance (in km) from the user's typical login location.
 
-Example Scenarios:
-Scenario
+0.5 km
 
-Geo Deviation (km)
+8,000 km (International jump)
 
-Risk Score (0-1)
+Historical Risk Score (0.0 - 1.0)
 
-Login Time (Abnormal)
-
-Expected Result
-
-Legitimate User
-
-0.5
+A composite score based on past user behavior (1.0 is highest trust).
 
 0.98
 
-No (0)
+0.12 (Indicates compromised credentials)
 
-ACCESS GRANTED
+Login Time (Is Abnormal)
 
-Compromised Account
+Binary flag: Is the login outside typical working hours?
 
-8000.0
+Normal (Payload: 0)
 
-0.12
+Abnormal (Payload: 1)
 
-Yes (1)
+Device Fingerprint (Consistent)
 
-ACCESS DENIED
+Binary flag: Is the session ID/device hash recognized?
 
-Insider Threat
+Consistent (Payload: 1)
 
-10.0
+New Session ID (Payload: 0)
 
-0.05
+Scenario Testing Flow
+Click "Set Legitimate Defaults" to load typical low-risk data.
 
-No (0)
+Click "Randomize Suspicious Inputs" to load a randomized, high-risk profile (e.g., high KM, low risk score).
 
-ACCESS DENIED (Due to low historical score)
+Click "Run AI Prediction" to send the current data to the Flask model for real-time scoring.
 
-🧠 Model & Concept
-Isolation Forest (Model)
-The Isolation Forest is an unsupervised machine learning algorithm designed specifically for anomaly detection. It works by "isolating" observations rather than building profiles of normal points. Anomalies are data points that are few and different, making them easier to isolate using random partitioning. This makes it highly effective for cybersecurity threat detection, where suspicious logins are rare compared to legitimate ones.
+🛠️ Setup and Installation
+1. Project Structure
+Ensure all files are arranged correctly for Flask deployment:
 
-Zero Trust (Concept)
-The core security principle here is Never Trust, Always Verify. Access is not granted based on network location or initial authentication; instead, every access attempt is treated as suspicious until the user's current behavioral profile passes the AI verification.
+zero-trust-project/
+├── app.py                      # (Flask server logic)
+├── train_model.py              # (Model training script)
+├── requirements.txt            # (Dependency list)
+├── isolation_forest_model.joblib # (The trained model)
+└── templates/
+    └── index.html              # (The frontend UI)
+
+2. Dependencies
+Install the required Python packages (e.g., on PythonAnywhere or locally):
+
+pip install -r requirements.txt
+
+3. Training the Model
+Run this script once to generate the machine learning model file (isolation_forest_model.joblib):
+
+python train_model.py
+
+4. Running Locally
+Start the Flask server from the root directory:
+
+python app.py
+
+Access the application at http://127.0.0.1:5000/.
