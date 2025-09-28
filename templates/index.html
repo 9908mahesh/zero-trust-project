@@ -3,106 +3,422 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zero Trust Access Control</title>
+    <title>AI Zero Trust Access Control</title>
+    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
+            background-color: #0d1117; /* Dark background */
+        }
+        /* Custom styling for the input fields */
+        .feature-input {
+            width: 8rem; /* Fixed width for better alignment */
+            padding: 0.5rem;
+            text-align: right;
+            background-color: #1f2937; /* Gray-800 equivalent */
+            border: 1px solid #4b5563; /* Gray-600 */
+            border-radius: 0.377rem;
+            transition: border-color 0.2s;
+        }
+        .feature-input:focus {
+            outline: none;
+            border-color: #60a5fa; /* Blue-400 */
+            box-shadow: 0 0 0 1px #60a5fa;
+        }
+        .action-button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
-    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
-        <h1 class="text-3xl font-bold text-gray-800 text-center mb-6">AI-Powered Zero Trust Demo</h1>
-        
-        <p class="text-gray-600 text-center mb-8">
-            This demo simulates an AI-driven security system that analyzes user behavior (typing speed, mouse movement, etc.) to grant or deny access.
-        </p>
+<body class="min-h-screen p-4 sm:p-8 flex items-start justify-center">
 
-        <!-- Form for "legitimate" user -->
-        <form id="legitimate-form" class="space-y-4">
-            <h2 class="text-xl font-semibold text-gray-700">Simulate Legitimate User</h2>
-            <p class="text-sm text-gray-500">Clicking this button simulates a user with normal behavior.</p>
-            <button type="submit" class="w-full bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75">
-                Login as Legitimate User
-            </button>
-        </form>
+    <div class="w-full max-w-4xl space-y-8">
 
-        <div class="my-6 border-t border-gray-300"></div>
+        <!-- Header -->
+        <header class="text-center">
+            <h1 class="text-4xl font-extrabold text-blue-400 mb-2">AI Zero Trust Access Control</h1>
+            <p class="text-lg text-gray-400">Behavioral Anomaly Detection Prototype</p>
+        </header>
 
-        <!-- Form for "suspicious" user -->
-        <form id="suspicious-form" class="space-y-4">
-            <h2 class="text-xl font-semibold text-gray-700">Simulate Suspicious Activity</h2>
-            <p class="text-sm text-gray-500">This simulates a user with erratic, "non-human" behavior.</p>
-            <button type="submit" class="w-full bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition-colors focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-75">
-                Login as Suspicious User
-            </button>
-        </form>
+        <!-- Main Content Grid -->
+        <div class="grid md:grid-cols-2 gap-8">
 
-        <div class="my-6 border-t border-gray-300"></div>
+            <!-- Prediction Interface Card (Left) -->
+            <div class="bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700">
+                <h2 class="text-2xl font-semibold text-white mb-6 border-b border-gray-700 pb-3">1. Set Scenario Inputs</h2>
 
-        <!-- Result area -->
-        <div id="result-container" class="mt-6 p-4 border rounded-lg">
-            <h3 class="text-lg font-bold">Prediction Result:</h3>
-            <p id="result-message" class="mt-2 text-gray-700 font-medium italic">Click a button to test the system.</p>
+                <!-- Scenario Action Buttons -->
+                <div class="space-y-3">
+                    <button id="set-legit-button" 
+                            class="action-button w-full bg-green-700 hover:bg-green-600 text-white" 
+                            onclick="setLegitimateDefaults()">
+                        Set Legitimate Defaults
+                    </button>
+                    <button id="set-suspicious-button" 
+                            class="action-button w-full bg-red-700 hover:bg-red-600 text-white" 
+                            onclick="setSuspiciousDefaults(true)">
+                        Randomize Suspicious Inputs
+                    </button>
+                </div>
+
+                <!-- Prediction Button -->
+                <button id="predict-button" class="mt-8 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition duration-300 shadow-lg" onclick="makePrediction()">
+                    Run AI Prediction
+                </button>
+
+                <!-- Prediction Result -->
+                <div id="result-box" class="mt-6 p-4 rounded-lg text-center font-bold text-xl transition-all duration-500 min-h-[70px] flex items-center justify-center border-2 border-dashed">
+                    <span class="text-gray-400 text-base font-normal">Set inputs and run the prediction.</span>
+                </div>
+            </div>
+
+            <!-- Feature Payload Card (Right) -->
+            <div class="bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700">
+                <h2 class="text-2xl font-semibold text-white mb-6 border-b border-gray-700 pb-3">2. Current Behavioral Input (Editable)</h2>
+                <p class="text-sm text-gray-400 mb-4">The fields below reflect the current scenario and are editable. Use the buttons on the left to set presets.</p>
+                
+                <div id="feature-payload" class="space-y-4 text-white">
+                    <!-- Editable feature details will be injected here by JS -->
+                </div>
+
+                <div class="mt-8">
+                    <h3 class="text-xl font-semibold text-green-400 mb-2">Key Model:</h3>
+                    <p class="text-sm text-gray-300">Scikit-learn Anomaly Detection (Isolation Forest)</p>
+                    <p id="api-status" class="text-xs mt-2 text-yellow-500 font-bold">Status: Attempting to connect to **Flask Backend**...</p>
+                </div>
+            </div>
         </div>
+
+        <!-- Footer Note -->
+        <p class="text-center text-sm text-gray-500 mt-8">
+            Prototype built with Python/Flask (Backend) and Tailwind CSS (Frontend).
+        </p>
     </div>
 
     <script>
-        // Function to send data to the Flask server
-        async function sendData(userData) {
-            const resultMessage = document.getElementById('result-message');
-            resultMessage.textContent = "Analyzing behavior...";
-            resultMessage.classList.remove('text-green-600', 'text-red-600');
+        // --- Configuration ---
+        // API_URL is relative to the current host, which is correct for Flask on PythonAnywhere
+        const API_URL = '/predict'; 
+        let currentScenarioKey = 'legitimate'; 
+
+        // Define the data payloads for the two base scenarios
+        const scenarios = {
+            legitimate: {
+                title: "Scenario: Normal Login (Low Risk)",
+                features: [
+                    // Static Features
+                    { name: "Login Time (Is Abnormal)", displayValue: "Normal (Work Hours)", style: "text-green-400", type: 'static', payloadValue: 0, key: 'login_time_is_abnormal' },
+                    { name: "Device Fingerprint (Consistent)", displayValue: "Consistent Hash", style: "text-green-400", type: 'static', payloadValue: 1, key: 'device_is_consistent' },
+                    // Editable Features (Fixed Legitimate Values)
+                    { name: "Geolocation Deviation (km)", value: 0.5, style: "text-green-400", type: 'input', id: 'geo_deviation_km', min: 0, step: 0.1, key: 'geo_deviation_km' },
+                    { name: "Historical Risk Score (0.0 - 1.0)", value: 0.98, style: "text-green-400", type: 'input', id: 'historical_risk_score', min: 0.0, max: 1.0, step: 0.01, key: 'historical_risk_score' }
+                ]
+            },
+            suspicious: {
+                title: "Scenario: High-Risk Anomaly",
+                features: [
+                    // Static Features
+                    { name: "Login Time (Is Abnormal)", displayValue: "Abnormal (3:00 AM)", style: "text-red-400", type: 'static', payloadValue: 1, key: 'login_time_is_abnormal' },
+                    { name: "Device Fingerprint (Consistent)", displayValue: "New Session ID", style: "text-red-400", type: 'static', payloadValue: 0, key: 'device_is_consistent' },
+                    // Editable Features (Placeholder for High-Risk/Randomized Values)
+                    { name: "Geolocation Deviation (km)", value: 8000, style: "text-red-400", type: 'input', id: 'geo_deviation_km', min: 0, step: 1, key: 'geo_deviation_km' },
+                    { name: "Historical Risk Score (0.0 - 1.0)", value: 0.12, style: "text-red-400", type: 'input', id: 'historical_risk_score', min: 0.0, max: 1.0, step: 0.01, key: 'historical_risk_score' }
+                ]
+            }
+        };
+
+        const resultBox = document.getElementById('result-box');
+        const featurePayloadDiv = document.getElementById('feature-payload');
+        const predictButton = document.getElementById('predict-button');
+        const apiStatus = document.getElementById('api-status');
+        
+        // --- Helper Function: Randomization ---
+        function getRandomInt(min, max) {
+            min = Math.ceil(min);
+            max = Math.floor(max);
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function getRandomFloat(min, max, decimals) {
+            const str = (Math.random() * (max - min) + min).toFixed(decimals);
+            return parseFloat(str);
+        }
+
+        // --- Core UI Update Function ---
+        function updateFeatureDisplay(scenarioKey, dynamicValues = {}) {
+            currentScenarioKey = scenarioKey;
+            const scenario = scenarios[scenarioKey];
+            let html = '';
+            
+            const colorClass = scenarioKey === 'legitimate' ? 'text-green-400' : 'text-red-400';
+            html += `<h3 class="text-xl font-bold ${colorClass} mb-3">${scenario.title}</h3>`;
+            
+            scenario.features.forEach(feature => {
+                if (feature.type === 'input') {
+                    // Use dynamic value if provided, otherwise use the fixed default
+                    const displayValue = dynamicValues[feature.key] !== undefined 
+                                         ? dynamicValues[feature.key] 
+                                         : feature.value;
+
+                    // Render an editable input field
+                    html += `
+                        <div class="flex justify-between items-center text-sm">
+                            <label for="${feature.id}" class="text-gray-400">${feature.name}:</label>
+                            <input type="number" id="${feature.id}" 
+                                   value="${displayValue}" 
+                                   min="${feature.min}" max="${feature.max || ''}" step="${feature.step}"
+                                   class="feature-input ${feature.style} font-semibold">
+                        </div>
+                    `;
+                } else {
+                    // Render static text
+                    html += `
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-gray-400">${feature.name}:</span>
+                            <span class="font-semibold ${feature.style}">${feature.displayValue}</span>
+                        </div>
+                    `;
+                }
+            });
+
+            featurePayloadDiv.innerHTML = html;
+        }
+
+        // --- Scenario Setter Functions ---
+
+        function setLegitimateDefaults() {
+            // Restore static features in case they were flipped during a suspicious run
+            const legitStatic = scenarios.legitimate.features.filter(f => f.type === 'static');
+            legitStatic.find(f => f.key === 'login_time_is_abnormal').displayValue = "Normal (Work Hours)";
+            legitStatic.find(f => f.key === 'device_is_consistent').displayValue = "Consistent Hash";
+
+            // No randomization needed, use fixed values
+            const fixedValues = {
+                'geo_deviation_km': scenarios.legitimate.features.find(f => f.key === 'geo_deviation_km').value,
+                'historical_risk_score': scenarios.legitimate.features.find(f => f.key === 'historical_risk_score').value
+            };
+            updateFeatureDisplay('legitimate', fixedValues);
+        }
+
+        function setSuspiciousDefaults(randomize = false) {
+            let dynamicValues = {};
+            const baseSuspicious = scenarios.suspicious.features;
+
+            // Reset static features to their high-risk defaults for the suspicious scenario
+            const timeFeature = baseSuspicious.find(f => f.key === 'login_time_is_abnormal');
+            const deviceFeature = baseSuspicious.find(f => f.key === 'device_is_consistent');
+            timeFeature.payloadValue = 1;
+            timeFeature.displayValue = "Abnormal (3:00 AM)";
+            deviceFeature.payloadValue = 0;
+            deviceFeature.displayValue = "New Session ID";
+
+            if (randomize) {
+                // Generate randomized high-risk values
+                dynamicValues['geo_deviation_km'] = getRandomInt(4000, 15000); // 4,000 to 15,000 km deviation
+                dynamicValues['historical_risk_score'] = getRandomFloat(0.01, 0.35, 2); // Very low risk score
+                
+                // Also, randomly flip one of the binary features to show a more nuanced threat
+                if (Math.random() < 0.6) { // 60% chance of flipping one static feature
+                    if (Math.random() < 0.5) {
+                        timeFeature.payloadValue = 0; // Temporarily make time normal
+                        timeFeature.displayValue = "Normal (Flipped)";
+                    } else {
+                        deviceFeature.payloadValue = 1; // Temporarily make device consistent
+                        deviceFeature.displayValue = "Consistent (Flipped)";
+                    }
+                }
+
+            } else {
+                // Use fixed default suspicious values
+                dynamicValues['geo_deviation_km'] = baseSuspicious.find(f => f.key === 'geo_deviation_km').value;
+                dynamicValues['historical_risk_score'] = baseSuspicious.find(f => f.key === 'historical_risk_score').value;
+            }
+
+            updateFeatureDisplay('suspicious', dynamicValues);
+        }
+
+        // --- Core Prediction Logic: Handles both Flask API and Local Simulation (for Canvas Preview) ---
+        async function makePrediction() {
+            // Read values directly from the input fields
+            const geo_deviation_km_input = document.getElementById('geo_deviation_km');
+            const historical_risk_score_input = document.getElementById('historical_risk_score');
+            
+            if (!geo_deviation_km_input || !historical_risk_score_input) {
+                displayError("UI Inputs Missing. Reload page.");
+                return;
+            }
+
+            // --- 1. Construct Full Payload ---
+            const currentScenario = scenarios[currentScenarioKey];
+            const staticFeatures = currentScenario.features.filter(f => f.type === 'static');
+            
+            const payload = { 
+                // Editable values
+                geo_deviation_km: parseFloat(geo_deviation_km_input.value),
+                historical_risk_score: parseFloat(historical_risk_score_input.value),
+                
+                // Static values
+                login_time_is_abnormal: staticFeatures.find(f => f.key === 'login_time_is_abnormal').payloadValue,
+                device_is_consistent: staticFeatures.find(f => f.key === 'device_is_consistent').payloadValue,
+            };
+
+            // Basic Input Validation
+            if (isNaN(payload.geo_deviation_km) || isNaN(payload.historical_risk_score) || 
+                payload.historical_risk_score < 0 || payload.historical_risk_score > 1) {
+                displayError("Invalid input: Check Geolocation (must be a number) and Risk Score (must be 0.0 - 1.0).");
+                return;
+            }
+            
+            console.log("Sending Payload:", payload);
+
+            // --- 2. Update UI for Loading State ---
+            resultBox.innerHTML = '<span class="text-yellow-500 text-base font-normal">Analyzing...</span>';
+            resultBox.className = 'mt-6 p-4 rounded-lg text-center font-bold text-xl border-2 border-yellow-500 border-dashed transition-all duration-500 min-h-[70px] flex items-center justify-center';
+            predictButton.disabled = true;
+            predictButton.textContent = 'Running Model...';
+            
+            let result = null;
+            let finalError = null;
+
+            // --- 3. Attempt Real Flask API Call (with a 2-second timeout for a faster fallback) ---
+            const controller = new AbortController();
+            const signal = controller.signal;
+            const timeoutId = setTimeout(() => controller.abort(), 2000); 
 
             try {
-                const response = await fetch('/authenticate', {
+                const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(userData)
+                    body: JSON.stringify(payload),
+                    signal: signal 
                 });
 
-                const result = await response.json();
-                resultMessage.textContent = result.message;
+                clearTimeout(timeoutId); // Clear the timeout if the request succeeds quickly
 
-                if (result.status === "Success") {
-                    resultMessage.classList.add('text-green-600');
-                } else if (result.status === "Suspicious") {
-                    resultMessage.classList.add('text-red-600');
+                if (!response.ok) {
+                    throw new Error(`Server responded with status: ${response.status}`);
                 }
+
+                result = await response.json();
+                apiStatus.className = 'text-xs mt-2 text-green-400 font-bold';
+                apiStatus.textContent = 'Status: Successfully connected to **Flask Backend**.';
+
             } catch (error) {
-                console.error('Error:', error);
-                resultMessage.textContent = "Connection error. Please check the server.";
-                resultMessage.classList.add('text-red-600');
+                clearTimeout(timeoutId);
+                console.warn('Real Flask API call failed. Switching to Local Simulation (This happens if the backend is not running or unreachable):', error);
+                finalError = error;
+            }
+
+            // --- 4. Fallback to Local Simulation ---
+            if (!result) {
+                result = localSimulationPrediction(payload);
+                apiStatus.className = 'text-xs mt-2 text-yellow-500 font-bold';
+                apiStatus.textContent = 'Status: **LOCAL SIMULATION MODE** (Flask Backend unreachable or timeout).';
+            }
+
+            // --- 5. Display Final Result ---
+            if (result && result.prediction) {
+                const decision = result.prediction.toLowerCase();
+                // Ensure confidence is between 0 and 1
+                const confidence = Math.max(0.01, Math.min(0.99, result.confidence || (decision.includes('legitimate') ? 0.99 : 0.01))); 
+                const decisionText = `${decision.toUpperCase()}, Confidence Score: ${Math.round(confidence * 100)}/100`;
+                displayResult(decisionText, decision);
+            } else {
+                displayError(`Flask Error: ${finalError ? finalError.message : 'Unknown response structure.'}`);
+            }
+
+            // --- 6. Auto-Update Logic (If the prediction just ran on a suspicious scenario) ---
+            if (currentScenarioKey === 'suspicious') {
+                // If the user ran a suspicious prediction, automatically randomize the inputs again
+                // so the next click tests a new suspicious scenario.
+                setSuspiciousDefaults(true);
+            }
+        }
+        
+        // --- Local Simulation Logic (for preview environments that cannot reach the server) ---
+        function localSimulationPrediction(payload) {
+            const { geo_deviation_km, historical_risk_score, login_time_is_abnormal, device_is_consistent } = payload;
+            
+            let risk = 0; // Risk score starts at 0
+
+            // Apply risk based on inputs
+            // High Distance: Very high risk factor
+            if (geo_deviation_km > 5000) { risk += 0.5; }
+            else if (geo_deviation_km > 1000) { risk += 0.3; }
+            else if (geo_deviation_km > 100) { risk += 0.1; }
+
+            // Low Historical Risk Score: High risk factor (Risk score is inverse: low score means high risk)
+            risk += (1.0 - historical_risk_score) * 0.5;
+
+            // Abnormal Time: Medium risk factor
+            if (login_time_is_abnormal === 1) { risk += 0.2; }
+
+            // Inconsistent Device: Medium risk factor
+            if (device_is_consistent === 0) { risk += 0.2; }
+
+            // Clamp risk
+            risk = Math.max(0, Math.min(1.0, risk));
+            
+            // Decision based on threshold
+            const isSuspicious = risk > 0.6;
+            
+            if (isSuspicious) {
+                // High risk means high confidence in SUSPICIOUS
+                return {
+                    prediction: "SUSPICIOUS",
+                    confidence: risk 
+                };
+            } else {
+                // Low risk means high confidence in LEGITIMATE
+                return {
+                    prediction: "LEGITIMATE",
+                    confidence: 1.0 - risk 
+                };
             }
         }
 
-        // Event listener for legitimate user form
-        document.getElementById('legitimate-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            // Simulate normal user data
-            const userData = {
-                typing_speed: Math.random() * (70 - 40) + 40, 
-                mouse_movement: Math.random() * (0.6 - 0.2) + 0.2,
-                login_time_diff: Math.random() * (4 - 1) + 1,
-                location_change: 0
-            };
-            sendData(userData);
-        });
+        // --- UI Helper Functions ---
+        function displayResult(text, decision) {
+            const isLegitimate = decision.includes('legitimate');
+            const colorClass = isLegitimate ? 'bg-green-600 border-green-400' : 'bg-red-600 border-red-400';
+            
+            const mainMessage = isLegitimate 
+                ? `ACCESS GRANTED`
+                : `ACCESS DENIED - ANOMALY DETECTED`;
+            
+            const detailText = text.replace(/LEGITIMATE|SUSPICIOUS/i, '').trim();
 
-        // Event listener for suspicious user form
-        document.getElementById('suspicious-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            // Simulate suspicious/erratic user data
-            const userData = {
-                typing_speed: Math.random() * (20 - 5) + 5, // Slower, more erratic typing
-                mouse_movement: Math.random() * (1.2 - 0.8) + 0.8, // Faster, more erratic mouse movement
-                login_time_diff: Math.random() * (10 - 6) + 6,
-                location_change: 1 // Simulated location change
-            };
-            sendData(userData);
-        });
+            // The Zero Trust Challenge: Further authentication required
+            const detailMessage = isLegitimate
+                ? `System Verified User Behavior. ${detailText}`
+                : `Further authentication required: 2-Factor Authentication + CAPTCHA. ${detailText}`;
+
+            resultBox.className = `mt-6 p-4 rounded-lg text-center font-bold text-xl text-white ${colorClass} shadow-xl transition-all duration-500 min-h-[70px] flex items-center justify-center flex-col`;
+            resultBox.innerHTML = `
+                <span>${mainMessage}</span>
+                <span class="text-sm font-normal mt-1">${detailMessage}</span>
+            `;
+            predictButton.disabled = false;
+            predictButton.textContent = 'Run AI Prediction';
+        }
+        
+        function displayError(message) {
+            resultBox.className = 'mt-6 p-4 rounded-lg text-center font-bold text-xl bg-red-800 border-red-500 transition-all duration-500 min-h-[70px] flex items-center justify-center text-white';
+            resultBox.innerHTML = `<span>ERROR: ${message}</span>`;
+            predictButton.disabled = false;
+            predictButton.textContent = 'Run AI Prediction';
+        }
+
+        // Initialize the UI on load: start with the Legitimate scenario
+        window.onload = () => {
+            setLegitimateDefaults();
+        };
     </script>
 </body>
 </html>
