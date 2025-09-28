@@ -1,71 +1,115 @@
-import os
 from flask import Flask, request, jsonify, render_template
+from joblib import load
+import pandas as pd
 import numpy as np
-import joblib
+import os
 
 app = Flask(__name__)
 
-# Correctly load the model using an absolute path relative to the app's directory
-MODEL_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'zero_trust_model.joblib')
+# --- Model Loading ---
+MODEL_PATH = 'isolation_forest_model.joblib'
 
-try:
-    model = joblib.load(MODEL_FILE_PATH)
-    model_loaded = True
-except Exception as e:
-    model_loaded = False
-    print(f"Error loading the model: {e}")
+# Check if the model file exists
+if not os.path.exists(MODEL_PATH):
+    print(f"--- WARNING: Model file not found at {MODEL_PATH} ---")
+    print("Please run 'python train_model.py' first to generate the model.")
+    # Use a placeholder (None) and handle errors later
+    model = None
+else:
+    try:
+        # Load the trained Isolation Forest model
+        model = load(MODEL_PATH)
+        print(f"Model loaded successfully from {MODEL_PATH}.")
+    except Exception as e:
+        print(f"Error loading model: {e}")
+        model = None
+
+# Define the expected feature order for the model
+FEATURES = [
+    'geo_deviation_km',
+    'historical_risk_score',
+    'login_time_is_abnormal',
+    'device_is_consistent'
+]
+
+# --- Flask Routes ---
 
 @app.route('/')
-def home():
-    return render_template('index.html', model_loaded=model_loaded)
+def index():
+    """Renders the main HTML interface."""
+    return render_template('index.html')
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    if not model_loaded:
-        return jsonify({'prediction': 'Model not loaded. Please contact the administrator.'})
+    """
+    Receives input data via POST request, runs it through the model,
+    and returns a prediction (LEGITIMATE or SUSPICIOUS) and a confidence score.
+    """
+    if not model:
+        return jsonify({
+            'prediction': 'ERROR', 
+            'confidence': 0.0, 
+            'error_message': 'Model not loaded on the server.'
+        }), 500
 
     try:
-        data = request.json
-        user_id = data.get('userId')
-        session_id = data.get('sessionId')
-        ip_address = data.get('ipAddress')
-        typing_speed = data.get('typingSpeed')
-        mouse_movement = data.get('mouseMovement')
-        login_time = data.get('loginTime')
-
-        # Convert ip_address to a numerical feature (e.g., using a hash)
-        # For simplicity in this example, we'll use a placeholder.
-        ip_address_feature = hash(ip_address) % 1000  # Simple hash to integer
-
-        # Prepare the features for the model
-        features = [
-            typing_speed,
-            mouse_movement,
-            login_time,
-            ip_address_feature
-        ]
+        data = request.get_json()
         
-        # Reshape the data for prediction. The model expects a 2D array.
-        features_np = np.array(features).reshape(1, -1)
+        # 1. Prepare data for the model
+        # Create a DataFrame in the exact order the model expects
+        input_data = pd.DataFrame({k: [data.get(k)] for k in FEATURES})
+        
+        # Simple input validation
+        if input_data.isnull().values.any():
+             return jsonify({
+                'prediction': 'ERROR',
+                'confidence': 0.0,
+                'error_message': 'Missing data fields in payload.'
+            }), 400
 
-        # Make a prediction
-        prediction_proba = model.predict_proba(features_np)[0]
-        prediction_class = model.predict(features_np)[0]
+        # 2. Make Prediction
+        # Isolation Forest uses a decision_function to get a score:
+        # Higher score (closer to 0 for Isolation Forest) means more 'normal'.
+        # Lower score (more negative) means more 'anomalous'.
+        
+        # Predict: returns 1 (inlier/legitimate) or -1 (outlier/suspicious)
+        prediction_result = model.predict(input_data)[0]
+        
+        # Decision function: raw anomaly score
+        anomaly_score = model.decision_function(input_data)[0]
+        
+        # 3. Process Result and Calculate Confidence
+        
+        if prediction_result == 1:
+            # LEGITIMATE
+            prediction_label = 'LEGITIMATE'
+            
+            # Confidence: 1 minus the scaled anomaly score (closer to 1.0 is better)
+            # Scaling score for a more intuitive confidence display (e.g., clamp between 0.5 and 0.99)
+            confidence = 1.0 - np.clip(-anomaly_score * 0.5, 0.01, 0.5)
+            
+        else:
+            # SUSPICIOUS (Anomaly Detected)
+            prediction_label = 'SUSPICIOUS'
+            
+            # Confidence: Scaled anomaly score (closer to 1.0 is better)
+            confidence = np.clip(-anomaly_score * 0.5, 0.5, 0.99)
 
-        # The model returns a probability of belonging to each class.
-        # We assume 0 is "legitimate" and 1 is "suspicious".
-        result = "Legitimate" if prediction_class == 0 else "Suspicious"
-
-        response = {
-            'prediction': result,
-            'probability_legitimate': float(prediction_proba[0]),
-            'probability_suspicious': float(prediction_proba[1])
-        }
-
-        return jsonify(response)
+        # 4. Return JSON response
+        return jsonify({
+            'prediction': prediction_label,
+            'confidence': round(confidence, 2)
+        })
 
     except Exception as e:
-        return jsonify({'error': str(e)})
+        app.logger.error(f"Prediction failed: {e}")
+        return jsonify({
+            'prediction': 'ERROR', 
+            'confidence': 0.0, 
+            'error_message': str(e)
+        }), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # In a production environment, you would use a proper WSGI server (like Gunicorn)
+    # The debug flag is useful for development but should be False in production.
+    app.run(debug=True, host='0.0.0.0', port=5000)
