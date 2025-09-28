@@ -1,56 +1,84 @@
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
+from sklearn.ensemble import IsolationForest
 from joblib import dump
+import os
 
-def generate_data():
-    """
-    Generates a synthetic dataset for training the zero trust model.
-    The data includes features like typing speed, mouse movement, and
-    whether the user's location has changed.
-    """
-    data = {
-        # Normal distribution for typing speed, average 50 wpm
-        'typing_speed': np.random.normal(50, 10, 2000),  
-        # Normal distribution for mouse movement, lower value means smoother movement
-        'mouse_movement': np.random.normal(0.5, 0.2, 2000), 
-        # Uniform distribution for time between logins
-        'login_time_diff': np.random.uniform(1, 5, 2000), 
-        # 5% chance of a location change (simulates an attacker)
-        'location_change': np.random.choice([0, 1], 2000, p=[0.95, 0.05]),
-        # 90% legitimate users, 10% suspicious
-        'is_legitimate': np.random.choice([0, 1], 2000, p=[0.1, 0.9]) 
-    }
-    df = pd.DataFrame(data)
+# Define feature columns
+FEATURES = [
+    'geo_deviation_km',
+    'historical_risk_score',
+    'login_time_is_abnormal', # 1=Abnormal (e.g., 3am), 0=Normal
+    'device_is_consistent'    # 0=Inconsistent (New Device), 1=Consistent
+]
+
+def generate_synthetic_data(n_samples=1000, contamination=0.1):
+    """Generates synthetic behavioral login data for model training."""
     
-    # Introduce anomalies for the "suspicious" users (is_legitimate == 0)
-    # Give them slower, more erratic typing and erratic mouse movement
-    df.loc[df['is_legitimate'] == 0, 'typing_speed'] = np.random.uniform(5, 20, sum(df['is_legitimate'] == 0))
-    df.loc[df['is_legitimate'] == 0, 'mouse_movement'] = np.random.uniform(0.8, 1.2, sum(df['is_legitimate'] == 0))
+    # 1. Generate normal (low-risk) data points
+    n_normal = int(n_samples * (1 - contamination))
+    normal_data = pd.DataFrame({
+        'geo_deviation_km': np.random.normal(loc=10, scale=20, size=n_normal), # Low deviation (10km avg)
+        'historical_risk_score': np.random.uniform(low=0.7, high=1.0, size=n_normal), # High risk score (low risk)
+        'login_time_is_abnormal': np.random.choice([0, 0, 0, 1], size=n_normal), # Mostly normal time
+        'device_is_consistent': np.random.choice([1, 1, 1, 0], size=n_normal) # Mostly consistent device
+    })
     
-    return df
+    # Ensure geo deviation is not negative
+    normal_data['geo_deviation_km'] = normal_data['geo_deviation_km'].apply(lambda x: max(0, x))
 
-def train_and_save_model():
-    """
-    Trains a Random Forest Classifier on the synthetic data and saves the model.
-    """
-    df = generate_data()
+    # 2. Generate anomalous (high-risk) data points
+    n_anomaly = int(n_samples * contamination)
+    anomaly_data = pd.DataFrame({
+        'geo_deviation_km': np.random.uniform(low=1000, high=15000, size=n_anomaly), # High deviation (long distance)
+        'historical_risk_score': np.random.uniform(low=0.01, high=0.4, size=n_anomaly), # Low risk score (high risk)
+        'login_time_is_abnormal': np.random.choice([1, 1, 1, 0], size=n_anomaly), # Mostly abnormal time
+        'device_is_consistent': np.random.choice([0, 0, 1], size=n_anomaly) # Mostly inconsistent device
+    })
+    
+    # Combine data
+    data = pd.concat([normal_data, anomaly_data], ignore_index=True)
+    return data[FEATURES]
 
-    # Separate features (X) and target (y)
-    X = df.drop('is_legitimate', axis=1)
-    y = df['is_legitimate']
+def train_and_save_model(data, model_path='isolation_forest_model.joblib'):
+    """Trains the Isolation Forest model and saves it."""
+    
+    print("Starting model training...")
+    
+    # Isolation Forest is an unsupervised anomaly detection model.
+    # It attempts to "isolate" outliers based on random sub-sampling.
+    # The 'contamination' parameter estimates the proportion of outliers in the data.
+    model = IsolationForest(
+        contamination=0.1, 
+        random_state=42, 
+        n_estimators=100
+    )
+    
+    # Train the model
+    model.fit(data)
+    
+    # Save the model to disk
+    dump(model, model_path)
+    
+    print(f"Model trained successfully and saved to: {model_path}")
+    
+    # Quick check for model functionality
+    # Prediction: -1 for anomalies (suspicious), 1 for inliers (legitimate)
+    sample_legit = data.iloc[[0]] 
+    sample_suspicious = pd.DataFrame({
+        'geo_deviation_km': [10000.0],
+        'historical_risk_score': [0.1],
+        'login_time_is_abnormal': [1],
+        'device_is_consistent': [0]
+    })
+    
+    print("\nModel Test:")
+    print(f"Legitimate Sample Prediction (-1=Suspicious, 1=Legitimate): {model.predict(sample_legit)}")
+    print(f"Suspicious Sample Prediction (-1=Suspicious, 1=Legitimate): {model.predict(sample_suspicious)}")
 
-    # Split the data into a training set and a testing set
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-    # Initialize and train the Random Forest Classifier
-    model = RandomForestClassifier(n_estimators=100, random_state=42)
-    model.fit(X_train, y_train)
-
-    # Save the trained model to a file using joblib
-    dump(model, 'zero_trust_model.joblib')
-    print("Model trained and saved as 'zero_trust_model.joblib'")
 
 if __name__ == '__main__':
-    train_and_save_model()
+    # Ensure the model directory exists if needed, though typically it's saved in the root/app directory
+    
+    synthetic_data = generate_synthetic_data(n_samples=5000, contamination=0.05)
+    train_and_save_model(synthetic_data)
